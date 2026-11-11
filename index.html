@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogicSet Solver | Lógica Proposicional y Conjuntos</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <h1>LogicSet Solver</h1>
+            <p>Resolutor integrado de <strong>Lógica Proposicional</strong> y <strong>Teoría de Conjuntos</strong> mediante Dualidad Booleana</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- PANEL DE ENTRADA DEL PROBLEMA -->
+        <section class="card">
+            <div class="card-header">
+                <h2>1. Ingresá el Problema a Resolver</h2>
+                <span class="badge">Entrada Interactiva</span>
+            </div>
+
+            <div class="input-grid">
+                <!-- Entrada Lógica -->
+                <div class="logic-input-box">
+                    <label for="formula-input">Fórmula de Lógica Proposicional (usá $p, q, r$):</label>
+                    <input type="text" id="formula-input" value="(p ∧ q) → r" placeholder="Ej: (p ∧ q) → ¬r">
+                    
+                    <div class="virtual-keyboard">
+                        <button type="button" class="key-btn var" data-val="p">p</button>
+                        <button type="button" class="key-btn var" data-val="q">q</button>
+                        <button type="button" class="key-btn var" data-val="r">r</button>
+                        <button type="button" class="key-btn op" data-val="¬" title="Negación (NO)">¬ (NO)</button>
+                        <button type="button" class="key-btn op" data-val="∧" title="Conjunción (Y)">∧ (Y)</button>
+                        <button type="button" class="key-btn op" data-val="∨" title="Disyunción (O)">∨ (O)</button>
+                        <button type="button" class="key-btn op" data-val="⊕" title="O Exclusivo">⊕ (XOR)</button>
+                        <button type="button" class="key-btn op" data-val="→" title="Condicional (Entonces)">→ (Si... entonces)</button>
+                        <button type="button" class="key-btn op" data-val="↔" title="Bicondicional (Si y solo si)">↔ (Sí y solo si)</button>
+                        <button type="button" class="key-btn" data-val="(">(</button>
+                        <button type="button" class="key-btn" data-val=")">)</button>
+                        <button type="button" class="key-btn clear" id="btn-clear">Borrar</button>
+                    </div>
+
+                    <div class="presets">
+                        <span>Ejemplos rápidos:</span>
+                        <button type="button" class="preset-btn" data-formula="(p ∧ q) → r">Condicional con 3 var</button>
+                        <button type="button" class="preset-btn" data-formula="¬(p ∨ q) ↔ (¬p ∧ ¬q)">Ley de De Morgan</button>
+                        <button type="button" class="preset-btn" data-formula="(p → q) ∧ (q → p)">Equivalencia</button>
+                    </div>
+                </div>
+
+                <!-- Entrada de Conjuntos Asociados -->
+                <div class="sets-input-box">
+                    <label>Elementos de los Conjuntos (separados por coma):</label>
+                    <p class="helper-text">Cada proposición equivale a pertenecer a un conjunto: $p \equiv x \in A$, $q \equiv x \in B$, $r \equiv x \in C$.</p>
+                    
+                    <div class="set-row">
+                        <span class="set-label">Universo $U$:</span>
+                        <input type="text" id="set-u" value="1, 2, 3, 4, 5, 6, 7, 8, 9, 10">
+                    </div>
+                    <div class="set-row">
+                        <span class="set-label">Conjunto $A$ ($p$):</span>
+                        <input type="text" id="set-a" value="1, 2, 3, 4, 5, 6">
+                    </div>
+                    <div class="set-row">
+                        <span class="set-label">Conjunto $B$ ($q$):</span>
+                        <input type="text" id="set-b" value="4, 5, 6, 7, 8">
+                    </div>
+                    <div class="set-row">
+                        <span class="set-label">Conjunto $C$ ($r$):</span>
+                        <input type="text" id="set-c" value="2, 4, 6, 8, 9">
+                    </div>
+                </div>
+            </div>
+
+            <button id="btn-solve" class="btn-primary">Resolver Problema y Generar Representaciones</button>
+            <div id="error-msg" class="error-box" style="display: none;"></div>
+        </section>
+
+        <!-- RESULTADOS: LÓGICA PROPOSICIONAL Y CONJUNTOS -->
+        <div class="results-layout">
+            <!-- Columna Izquierda: Lógica Proposicional -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>2. Resolución en Lógica Proposicional</h2>
+                    <span class="badge">Tabla de Verdad</span>
+                </div>
+
+                <div id="logic-summary" class="summary-box"></div>
+                
+                <div class="table-container">
+                    <table id="truth-table" class="math-table"></table>
+                </div>
+            </section>
+
+            <!-- Columna Derecha: Teoría de Conjuntos y Diagrama de Venn -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>3. Equivalencia y Resolución por Conjuntos</h2>
+                    <span class="badge badge-alt">Diagrama de Venn</span>
+                </div>
+
+                <div id="set-summary" class="summary-box"></div>
+
+                <div class="venn-wrapper">
+                    <canvas id="vennCanvas" width="420" height="320"></canvas>
+                    <small class="caption">Las regiones iluminadas en azul representan los elementos donde la proposición lógica resulta <strong>Verdadera (V)</strong>.</small>
+                </div>
+
+                <div id="set-operations-detail" class="summary-box" style="margin-top: 1rem;"></div>
+            </section>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+  </html>
+  
