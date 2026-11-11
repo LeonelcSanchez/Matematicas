@@ -8,7 +8,8 @@
     --accent-hover: #0284c7;
     --success: #22c55e;
     --danger: #ef4444;
-    --warning: #eab308;
+    --warning: #f59e0b;
+    --purple: #c084fc;
     --border: #334155;
 }
 
@@ -86,12 +87,6 @@ body {
     border-color: rgba(34, 197, 94, 0.3);
 }
 
-.input-grid {
-    display: grid;
-    grid-template-columns: 1.15fr 1fr;
-    gap: 1.5rem;
-}
-
 label {
     display: block;
     font-weight: 600;
@@ -99,96 +94,49 @@ label {
     font-size: 0.92rem;
 }
 
-input[type="text"] {
+textarea, input[type="text"] {
     width: 100%;
     background-color: var(--bg-panel);
     border: 1px solid #475569;
     color: var(--text-main);
-    padding: 0.65rem 0.85rem;
+    padding: 0.75rem 1rem;
     border-radius: 8px;
-    font-size: 1.05rem;
+    font-size: 1.02rem;
+    resize: vertical;
 }
 
-input[type="text"]:focus {
+textarea:focus, input[type="text"]:focus {
     outline: none;
     border-color: var(--accent);
 }
 
-.virtual-keyboard {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-    margin-top: 0.75rem;
-}
-
-.key-btn {
-    background-color: #162032;
-    color: var(--text-main);
-    border: 1px solid var(--border);
-    padding: 0.45rem 0.75rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.15s;
-}
-
-.key-btn:hover {
-    border-color: var(--accent);
-    background-color: #1e293b;
-}
-
-.key-btn.var { color: var(--accent); }
-.key-btn.op { color: var(--warning); }
-.key-btn.clear { color: var(--danger); margin-left: auto; }
-
 .presets {
-    margin-top: 0.85rem;
+    margin: 0.85rem 0 1.15rem;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 0.5rem;
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     color: var(--text-muted);
 }
 
 .preset-btn {
-    background: transparent;
+    background: rgba(56, 189, 248, 0.08);
     color: var(--accent);
     border: 1px dashed var(--accent);
-    padding: 0.2rem 0.55rem;
-    border-radius: 4px;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
+    transition: all 0.15s;
 }
 
 .preset-btn:hover {
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(56, 189, 248, 0.2);
 }
 
-.helper-text {
-    font-size: 0.83rem;
-    color: var(--text-muted);
-    margin-bottom: 0.75rem;
-}
-
-.set-row {
-    display: grid;
-    grid-template-columns: 125px 1fr;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.55rem;
-}
-
-.set-label {
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: #cbd5e1;
-}
-
-.set-row input {
-    padding: 0.45rem 0.65rem;
-    font-size: 0.9rem;
+.sets-config {
+    margin-top: 0.75rem;
 }
 
 .btn-primary {
@@ -199,7 +147,7 @@ input[type="text"]:focus {
     font-weight: 700;
     font-size: 1rem;
     border: none;
-    padding: 0.8rem;
+    padding: 0.85rem;
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.2s;
@@ -210,14 +158,96 @@ input[type="text"]:focus {
     color: #fff;
 }
 
-.error-box {
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background: rgba(239, 68, 68, 0.15);
-    border-left: 4px solid var(--danger);
-    color: #fca5a5;
+.formalization-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.box-panel {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.1rem;
+}
+
+.box-panel h3 {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.highlighted-output {
+    font-size: 1.08rem;
+    line-height: 1.8;
+    padding: 0.5rem 0;
+}
+
+.hl-conn {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-weight: 700;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.hl-prop {
+    background-color: rgba(56, 189, 248, 0.12);
+    color: #e0f2fe;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    border-bottom: 2px solid var(--accent);
+}
+
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.75rem;
+}
+
+.conn-tag {
+    font-size: 0.78rem;
+    background: #162032;
+    color: #cbd5e1;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    border-left: 3px solid var(--warning);
+}
+
+.dict-item {
+    padding: 0.5rem 0.75rem;
+    background: #162032;
     border-radius: 6px;
-    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.92rem;
+    border-left: 3px solid var(--accent);
+}
+
+.formula-banner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    background: linear-gradient(90deg, #0b1120, #162032);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+}
+
+.formula-col span {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.formula-col strong {
+    font-size: 1.4rem;
+    color: var(--accent);
+    font-family: 'Cambria Math', 'Times New Roman', monospace;
 }
 
 .results-layout {
@@ -233,14 +263,6 @@ input[type="text"]:focus {
     padding: 1rem;
     margin-bottom: 1rem;
     font-size: 0.92rem;
-}
-
-.summary-item {
-    margin-bottom: 0.5rem;
-}
-
-.summary-item:last-child {
-    margin-bottom: 0;
 }
 
 .table-container {
@@ -259,7 +281,7 @@ input[type="text"]:focus {
     padding: 0.6rem;
     text-align: center;
     border: 1px solid var(--border);
-    font-size: 0.92rem;
+    font-size: 0.9rem;
 }
 
 .math-table th {
@@ -267,19 +289,9 @@ input[type="text"]:focus {
     color: var(--accent);
 }
 
-.val-v {
-    color: var(--success);
-    font-weight: 700;
-}
-
-.val-f {
-    color: var(--danger);
-    font-weight: 600;
-}
-
-.result-col {
-    background-color: rgba(56, 189, 248, 0.08);
-}
+.val-v { color: var(--success); font-weight: 700; }
+.val-f { color: var(--danger); font-weight: 600; }
+.result-col { background-color: rgba(56, 189, 248, 0.08); }
 
 .venn-wrapper {
     display: flex;
@@ -304,7 +316,7 @@ canvas {
 }
 
 @media (max-width: 920px) {
-    .input-grid, .results-layout {
+    .formalization-grid, .formula-banner, .results-layout {
         grid-template-columns: 1fr;
     }
-  }
+}
