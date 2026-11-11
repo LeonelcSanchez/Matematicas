@@ -3,118 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LogicSet Solver | Lógica Proposicional y Conjuntos</title>
+    <title>Text2Logic | Analizador de Lenguaje Natural a Lógica y Conjuntos</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header class="main-header">
         <div class="container">
-            <h1>LogicSet Solver</h1>
-            <p>Resolutor integrado de <strong>Lógica Proposicional</strong> y <strong>Teoría de Conjuntos</strong> mediante Dualidad Booleana</p>
+            <h1>Text2Logic & Sets</h1>
+            <p>Escribí un problema en lenguaje coloquial: el sistema detecta conectores, formaliza las proposiciones y resuelve <strong>Lógica + Conjuntos</strong></p>
         </div>
     </header>
 
     <main class="container">
-        <!-- PANEL DE ENTRADA DEL PROBLEMA -->
+        <!-- SECCIÓN 1: ENTRADA DE TEXTO NATURAL -->
         <section class="card">
             <div class="card-header">
-                <h2>1. Ingresá el Problema a Resolver</h2>
-                <span class="badge">Entrada Interactiva</span>
+                <h2>1. Redactá el Enunciado o Problema en Español</h2>
+                <span class="badge">Parser de Lenguaje Natural</span>
             </div>
 
-            <div class="input-grid">
-                <!-- Entrada Lógica -->
-                <div class="logic-input-box">
-                    <label for="formula-input">Fórmula de Lógica Proposicional (usá $p, q, r$):</label>
-                    <input type="text" id="formula-input" value="(p ∧ q) → r" placeholder="Ej: (p ∧ q) → ¬r">
-                    
-                    <div class="virtual-keyboard">
-                        <button type="button" class="key-btn var" data-val="p">p</button>
-                        <button type="button" class="key-btn var" data-val="q">q</button>
-                        <button type="button" class="key-btn var" data-val="r">r</button>
-                        <button type="button" class="key-btn op" data-val="¬" title="Negación (NO)">¬ (NO)</button>
-                        <button type="button" class="key-btn op" data-val="∧" title="Conjunción (Y)">∧ (Y)</button>
-                        <button type="button" class="key-btn op" data-val="∨" title="Disyunción (O)">∨ (O)</button>
-                        <button type="button" class="key-btn op" data-val="⊕" title="O Exclusivo">⊕ (XOR)</button>
-                        <button type="button" class="key-btn op" data-val="→" title="Condicional (Entonces)">→ (Si... entonces)</button>
-                        <button type="button" class="key-btn op" data-val="↔" title="Bicondicional (Si y solo si)">↔ (Sí y solo si)</button>
-                        <button type="button" class="key-btn" data-val="(">(</button>
-                        <button type="button" class="key-btn" data-val=")">)</button>
-                        <button type="button" class="key-btn clear" id="btn-clear">Borrar</button>
-                    </div>
+            <div class="input-section">
+                <label for="natural-text">Enunciado coloquial (usá comas o conectores como "si... entonces", "y", "o", "no", "si y solo si"):</label>
+                <textarea id="natural-text" rows="3" placeholder="Ej: Si el motor calienta y no tiene agua, entonces se sopla la junta">Si el sistema tiene permisos y no falla la red, entonces el usuario ingresa al panel</textarea>
 
-                    <div class="presets">
-                        <span>Ejemplos rápidos:</span>
-                        <button type="button" class="preset-btn" data-formula="(p ∧ q) → r">Condicional con 3 var</button>
-                        <button type="button" class="preset-btn" data-formula="¬(p ∨ q) ↔ (¬p ∧ ¬q)">Ley de De Morgan</button>
-                        <button type="button" class="preset-btn" data-formula="(p → q) ∧ (q → p)">Equivalencia</button>
-                    </div>
+                <div class="presets">
+                    <span>Probar enunciados de ejemplo:</span>
+                    <button type="button" class="preset-btn" data-text="Si el sistema tiene permisos y no falla la red, entonces el usuario ingresa al panel">Ejemplo Sistemas (3 prop.)</button>
+                    <button type="button" class="preset-btn" data-text="Si el motor calienta o pierde aceite, entonces no pasa la revisión">Ejemplo Mecánica (3 prop.)</button>
+                    <button type="button" class="preset-btn" data-text="El cliente recibe descuento si y solo si compra al contado y no tiene deuda">Bicondicional (3 prop.)</button>
+                    <button type="button" class="preset-btn" data-text="Llueve y hace frío, o no llueve">Contingencia / Repetición (2 prop.)</button>
                 </div>
 
-                <!-- Entrada de Conjuntos Asociados -->
-                <div class="sets-input-box">
-                    <label>Elementos de los Conjuntos (separados por coma):</label>
-                    <p class="helper-text">Cada proposición equivale a pertenecer a un conjunto: $p \equiv x \in A$, $q \equiv x \in B$, $r \equiv x \in C$.</p>
-                    
-                    <div class="set-row">
-                        <span class="set-label">Universo $U$:</span>
-                        <input type="text" id="set-u" value="1, 2, 3, 4, 5, 6, 7, 8, 9, 10">
-                    </div>
-                    <div class="set-row">
-                        <span class="set-label">Conjunto $A$ ($p$):</span>
-                        <input type="text" id="set-a" value="1, 2, 3, 4, 5, 6">
-                    </div>
-                    <div class="set-row">
-                        <span class="set-label">Conjunto $B$ ($q$):</span>
-                        <input type="text" id="set-b" value="4, 5, 6, 7, 8">
-                    </div>
-                    <div class="set-row">
-                        <span class="set-label">Conjunto $C$ ($r$):</span>
-                        <input type="text" id="set-c" value="2, 4, 6, 8, 9">
-                    </div>
+                <!-- Universo opcional para ejemplificar elementos reales en los conjuntos -->
+                <div class="sets-config">
+                    <label for="universe-input">Elementos del Universo $U$ para evaluar en los Conjuntos (opcional, separados por coma):</label>
+                    <input type="text" id="universe-input" value="Caso 1, Caso 2, Caso 3, Caso 4, Caso 5, Caso 6, Caso 7, Caso 8">
                 </div>
+
+                <button id="btn-analyze" class="btn-primary">Analizar Texto, Extraer Conectores y Resolver Todo</button>
             </div>
-
-            <button id="btn-solve" class="btn-primary">Resolver Problema y Generar Representaciones</button>
-            <div id="error-msg" class="error-box" style="display: none;"></div>
         </section>
 
-        <!-- RESULTADOS: LÓGICA PROPOSICIONAL Y CONJUNTOS -->
-        <div class="results-layout">
-            <!-- Columna Izquierda: Lógica Proposicional -->
-            <section class="card">
-                <div class="card-header">
-                    <h2>2. Resolución en Lógica Proposicional</h2>
-                    <span class="badge">Tabla de Verdad</span>
+        <!-- SECCIÓN 2: DESGLOSE LINGÜÍSTICO Y FORMALIZACIÓN -->
+        <section class="card">
+            <div class="card-header">
+                <h2>2. Detección de Conectores y Formalización Simbólica</h2>
+                <span class="badge">Traducción Automática</span>
+            </div>
+
+            <div class="formalization-grid">
+                <div class="box-panel">
+                    <h3>Texto Procesado (Conectores Detectados)</h3>
+                    <div id="highlighted-text" class="highlighted-output"></div>
+                    <div id="connectors-list" class="tags-container"></div>
                 </div>
 
-                <div id="logic-summary" class="summary-box"></div>
-                
+                <div class="box-panel">
+                    <h3>Diccionario de Proposiciones Atómicas y Conjuntos</h3>
+                    <div id="propositions-dict" class="dict-list"></div>
+                </div>
+            </div>
+
+            <div class="formula-banner">
+                <div class="formula-col">
+                    <span>Fórmula Lógica Generada:</span>
+                    <strong id="symbolic-formula">(p ∧ ¬q) → r</strong>
+                </div>
+                <div class="formula-col">
+                    <span>Operación de Conjuntos Equivalente:</span>
+                    <strong id="set-formula">(A ∩ Bᶜ)ᶜ ∪ C</strong>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 3: TABLA DE VERDAD Y TEORÍA DE CONJUNTOS -->
+        <div class="results-layout">
+            <!-- Lógica Proposicional -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>3. Tabla de Verdad Construida</h2>
+                    <span class="badge">Lógica Proposicional</span>
+                </div>
+                <div id="logic-classification" class="summary-box"></div>
                 <div class="table-container">
                     <table id="truth-table" class="math-table"></table>
                 </div>
             </section>
 
-            <!-- Columna Derecha: Teoría de Conjuntos y Diagrama de Venn -->
+            <!-- Teoría de Conjuntos y Diagrama de Venn -->
             <section class="card">
                 <div class="card-header">
-                    <h2>3. Equivalencia y Resolución por Conjuntos</h2>
-                    <span class="badge badge-alt">Diagrama de Venn</span>
+                    <h2>4. Representación en Conjuntos y Venn</h2>
+                    <span class="badge badge-alt">Teoría de Conjuntos</span>
                 </div>
-
-                <div id="set-summary" class="summary-box"></div>
+                <div id="sets-explanation" class="summary-box"></div>
 
                 <div class="venn-wrapper">
-                    <canvas id="vennCanvas" width="420" height="320"></canvas>
-                    <small class="caption">Las regiones iluminadas en azul representan los elementos donde la proposición lógica resulta <strong>Verdadera (V)</strong>.</small>
+                    <canvas id="vennCanvas" width="440" height="330"></canvas>
+                    <small class="caption">Las regiones pintadas en celeste indican dónde el enunciado resulta <strong>Verdadero (V)</strong>.</small>
                 </div>
 
-                <div id="set-operations-detail" class="summary-box" style="margin-top: 1rem;"></div>
+                <div id="sets-elements-output" class="summary-box" style="margin-top: 1rem;"></div>
             </section>
         </div>
     </main>
 
     <script src="app.js"></script>
 </body>
-  </html>
-  
+</html>
