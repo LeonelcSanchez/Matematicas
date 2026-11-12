@@ -108,6 +108,369 @@
         </div>
     </main>
 
-    <script src="app.js"></script>
-</body>
-</html>
+    <script>
+const VAR_NAMES = ['p', 'q', 'r'];
+const SET_NAMES = ['A', 'B', 'C'];
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+// Normalizar texto para comparar si dos proposiciones dicen lo mismo
+function limpiarComparacion(texto) {
+    return texto
+        .toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[.,;:¡!¿?]/g, '')
+        .replace(/\b(el|la|los|las|un|una)\b/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function limpiarBordes(t) {
+    return t.trim().replace(/^[,;]+|[,;]+$/g, '').trim();
+}
+
+function capitalizar(t) {
+    return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/* ------------------------------------------------------------------
+   ÁRBOL LÓGICO (AST)
+   { t:'var', v:'p' } | { t:'not', a } | { t:'and'|'or', args:[...] }
+   { t:'xor'|'imp'|'iff', a, b }
+------------------------------------------------------------------- */
+
+// Fórmula lógica en texto: (p ∧ ¬q) → r
+function aLogica(n, top = false) {
+    const envolver = s => (top ? s : `(${s})`);
+    switch (n.t) {
+        case 'var': return n.v;
+        case 'not': return '¬' + aLogica(n.a);
+        case 'and': return envolver(n.args.map(x => aLogica(x)).join(' ∧ '));
+        case 'or': return envolver(n.args.map(x => aLogica(x)).join(' ∨ '));
+        case 'xor': return envolver(`${aLogica(n.a)} ⊕ ${aLogica(n.b)}`);
+        case 'imp': return envolver(`${aLogica(n.a)} → ${aLogica(n.b)}`);
+        case 'iff': return envolver(`${aLogica(n.a)} ↔ ${aLogica(n.b)}`);
+    }
+}
+
+// Operación de conjuntos equivalente: (A ∩ Bᶜ)ᶜ ∪ C
+function aConjuntos(n, top = false) {
+    const envolver = s => (top ? s : `(${s})`);
+    const letra = v => SET_NAMES[VAR_NAMES.indexOf(v)];
+    const complemento = x => {
+        if (x.t === 'var') return letra(x.v) + 'ᶜ';
+        if (x.t === 'not') return aConjuntos(x.a);
+        return `(${aConjuntos(x, true)})ᶜ`;
+    };
+    switch (n.t) {
+        case 'var': return letra(n.v);
+        case 'not': return complemento(n.a);
+        case 'and': return envolver(n.args.map(x => aConjuntos(x)).join(' ∩ '));
+        case 'or': return envolver(n.args.map(x => aConjuntos(x)).join(' ∪ '));
+        case 'xor': return envolver(`${aConjuntos(n.a)} Δ ${aConjuntos(n.b)}`);
+        case 'imp': return envolver(`${complemento(n.a)} ∪ ${aConjuntos(n.b)}`);
+        case 'iff': return `(${aConjuntos(n.a)} Δ ${aConjuntos(n.b)})ᶜ`;
+    }
+}
+
+// Evaluación booleana directa sobre el árbol (sin eval ni Function)
+function evaluar(n, env) {
+    switch (n.t) {
+        case 'var': return !!env[n.v];
+        case 'not': return !evaluar(n.a, env);
+        case 'and': return n.args.every(x => evaluar(x, env));
+        case 'or': return n.args.some(x => evaluar(x, env));
+        case 'xor': return evaluar(n.a, env) !== evaluar(n.b, env);
+        case 'imp': return !evaluar(n.a, env) || evaluar(n.b, env);
+        case 'iff': return evaluar(n.a, env) === evaluar(n.b, env);
+    }
+}
+
+/* ------------------------------------------------------------------
+   1. PARSER DE LENGUAJE NATURAL
+------------------------------------------------------------------- */
+function analizarTextoNatural(oracionOriginal) {
+    const texto = oracionOriginal.trim().replace(/[.!]+$/, '');
+    const conectores = [];
+    const proposiciones = []; // [{ variable:'p', conjunto:'A', texto:'...' }]
+
+    const agregarConector = (palabra, simbolo, tipo) => {
+        if (!conectores.some(c => c.palabra === palabra && c.simbolo === simbolo)) {
+            conectores.push({ palabra, simbolo, tipo });
+        }
+    };
+    const conn = t => `<span class="hl-conn">${t}</span>`;
+
+    // Oración atómica: reutiliza la variable si ya apareció
+    function atomo(fragmento) {
+        const limpio = limpiarBordes(fragmento);
+        if (!limpio) throw new Error('Falta una proposición junto a un conector.');
+        const clave = limpiarComparacion(limpio);
+        let p = proposiciones.find(x => limpiarComparacion(x.texto) === clave);
+        if (!p) {
+            if (proposiciones.length >= VAR_NAMES.length) {
+                throw new Error('Se detectaron más de 3 proposiciones distintas. Esta herramienta admite hasta 3 (p, q, r).');
+            }
+            const i = proposiciones.length;
+            p = { variable: VAR_NAMES[i], conjunto: SET_NAMES[i], texto: capitalizar(limpio) };
+            proposiciones.push(p);
+        }
+        return {
+            nodo: { t: 'var', v: p.variable },
+            html: `<span class="hl-prop">${escapeHtml(p.texto)} [${p.variable}]</span>`
+        };
+    }
+
+    // Negación ("no ...", "nunca ...", "el motor no arranca", "no es cierto que ...")
+    function literal(fragmento) {
+        const f = limpiarBordes(fragmento);
+
+        let m = f.match(/^(?:no es cierto que|no ocurre que|no se da que|es falso que)\s+(.+)$/i);
+        if (m) {
+            agregarConector('no es cierto que', '¬', 'Negación / Complemento');
+            const r = compuesto(m[1]);
+            return { nodo: { t: 'not', a: r.nodo }, html: `${conn('no es cierto que')} ${r.html}` };
+        }
+
+        let textoAtomo = null;
+        m = f.match(/^(?:nunca|no)\s+(.+)$/i);
+        if (m) {
+            textoAtomo = m[1];
+        } else {
+            m = f.match(/^(.+?)\s+no\s+(.+)$/i);
+            if (m) textoAtomo = `${m[1]} ${m[2]}`;
+        }
+        if (textoAtomo !== null) {
+            agregarConector('no', '¬', 'Negación / Complemento');
+            const r = atomo(textoAtomo);
+            return { nodo: { t: 'not', a: r.nodo }, html: `${conn('no')} ${r.html}` };
+        }
+        return atomo(f);
+    }
+
+    // Conjunción (mayor precedencia que la disyunción)
+    function conjuncion(b) {
+        const partes = b.split(/\s+(?:y|e|pero|además|ademas)\s+/i);
+        if (partes.length === 1) return literal(b);
+        agregarConector('y / pero', '∧', 'Conjunción / Intersección (∩)');
+        const r = partes.map(literal);
+        return {
+            nodo: { t: 'and', args: r.map(x => x.nodo) },
+            html: r.map(x => x.html).join(` ${conn('y')} `)
+        };
+    }
+
+    // Disyunción inclusiva / exclusiva
+    function compuesto(bloque) {
+        let b = limpiarBordes(bloque);
+        b = b.replace(/,\s*(?=(?:y|e|o|u|pero)\s)/gi, ' ');
+
+        if (/^(?:no es cierto que|no ocurre que|no se da que|es falso que)\s/i.test(b)) {
+            return literal(b);
+        }
+
+        const m = b.match(/^o bien\s+(.+?)\s+o\s+(?:bien\s+)?(.+)$/i)
+            || b.match(/^(.+?)\s+o bien\s+(.+)$/i);
+        if (m) {
+            agregarConector('o bien... o', '⊕', 'Disyunción Exclusiva / Dif. Simétrica (Δ)');
+            const izq = conjuncion(m[1]);
+            const der = conjuncion(m[2]);
+            return {
+                nodo: { t: 'xor', a: izq.nodo, b: der.nodo },
+                html: `${conn('o bien')} ${izq.html} ${conn('o')} ${der.html}`
+            };
+        }
+
+        const partes = b.split(/\s+(?:o|u)\s+/i);
+        if (partes.length > 1) {
+            agregarConector('o', '∨', 'Disyunción / Unión (∪)');
+            const r = partes.map(conjuncion);
+            return {
+                nodo: { t: 'or', args: r.map(x => x.nodo) },
+                html: r.map(x => x.html).join(` ${conn('o')} `)
+            };
+        }
+        return conjuncion(b);
+    }
+
+    let r = null;
+    let m;
+
+    // Bicondicional
+    m = texto.match(/^(.+?)\s+(?:si y s[oó]lo si|si y solamente si)\s+(.+)$/i);
+    if (m) {
+        agregarConector('si y solo si', '↔', 'Bicondicional / Igualdad de Conjuntos');
+        const izq = compuesto(m[1]);
+        const der = compuesto(m[2]);
+        r = {
+            nodo: { t: 'iff', a: izq.nodo, b: der.nodo },
+            html: `${izq.html} ${conn('si y solo si')} ${der.html}`
+        };
+    }
+
+    // Condicional "Si ..., entonces ..." o "Si ..., ..."
+    if (!r && /^si\s/i.test(texto)) {
+        m = texto.match(/^si\s+(.+?),?\s+entonces\s+(.+)$/i) || texto.match(/^si\s+(.+?),\s*(.+)$/i);
+        if (m) {
+            agregarConector('Si... entonces', '→', 'Condicional / Inclusión (Aᶜ ∪ B)');
+            const ant = compuesto(m[1]);
+            const con = compuesto(m[2]);
+            r = {
+                nodo: { t: 'imp', a: ant.nodo, b: con.nodo },
+                html: `${conn('Si')} ${ant.html}, ${conn('entonces')} ${con.html}`
+            };
+        }
+    }
+
+    // "... entonces ..." / "... por lo tanto ..." / "... implica que ..."
+    if (!r) {
+        m = texto.match(/^(.+?)\s+(?:entonces|por lo tanto|implica que)\s+(.+)$/i);
+        if (m) {
+            agregarConector('entonces / por lo tanto', '→', 'Condicional / Inclusión (Aᶜ ∪ B)');
+            const ant = compuesto(m[1]);
+            const con = compuesto(m[2]);
+            r = {
+                nodo: { t: 'imp', a: ant.nodo, b: con.nodo },
+                html: `${ant.html} ${conn('entonces')} ${con.html}`
+            };
+        }
+    }
+
+    if (!r) r = compuesto(texto);
+
+    return {
+        nodo: r.nodo,
+        formulaSimbolica: aLogica(r.nodo, true),
+        formulaConjuntos: aConjuntos(r.nodo, true),
+        htmlResaltado: r.html,
+        proposiciones,
+        conectores
+    };
+}
+
+/* ------------------------------------------------------------------
+   2. EJECUCIÓN PRINCIPAL Y RENDERIZADO
+------------------------------------------------------------------- */
+function typesetearMath() {
+    try {
+        if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+            window.MathJax.typesetPromise();
+        } else if (typeof window.renderMathInElement === 'function') {
+            window.renderMathInElement(document.body);
+        }
+    } catch (e) { /* sin librería matemática: se muestra texto plano */ }
+}
+
+function mostrarError(mensaje) {
+    document.getElementById('highlighted-text').innerHTML =
+        `<span style="color:#f87171;">⚠ ${escapeHtml(mensaje)}</span>`;
+    document.getElementById('connectors-list').innerHTML = '';
+    document.getElementById('propositions-dict').innerHTML = '';
+    document.getElementById('symbolic-formula').textContent = '—';
+    document.getElementById('set-formula').textContent = '—';
+    document.getElementById('truth-table').innerHTML = '';
+    document.getElementById('logic-classification').innerHTML = '';
+    document.getElementById('sets-explanation').innerHTML = '';
+    document.getElementById('sets-elements-output').innerHTML = '';
+    const canvas = document.getElementById('vennCanvas');
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function procesarProblemaCompleto() {
+    const textoUsuario = document.getElementById('natural-text').value;
+    if (!textoUsuario.trim()) return;
+
+    let analisis;
+    try {
+        analisis = analizarTextoNatural(textoUsuario);
+    } catch (err) {
+        mostrarError(err.message);
+        return;
+    }
+    const { nodo, formulaSimbolica, formulaConjuntos, htmlResaltado, proposiciones, conectores } = analisis;
+
+    document.getElementById('highlighted-text').innerHTML = htmlResaltado;
+
+    const connDiv = document.getElementById('connectors-list');
+    connDiv.innerHTML = conectores.length > 0
+        ? conectores.map(c =>
+            `<span class="conn-tag"><strong>"${escapeHtml(c.palabra)}"</strong> → <code>${c.simbolo}</code> (${escapeHtml(c.tipo)})</span>`
+        ).join('')
+        : `<span class="conn-tag">Proposición simple sin conectores compuestos</span>`;
+
+    document.getElementById('propositions-dict').innerHTML = proposiciones.map(p => `
+        <div class="dict-item">
+            <strong>${p.variable} (Conjunto ${p.conjunto}):</strong> "${escapeHtml(p.texto)}"
+        </div>
+    `).join('');
+
+    document.getElementById('symbolic-formula').textContent = formulaSimbolica;
+    document.getElementById('set-formula').textContent = formulaConjuntos;
+
+    // Tabla de verdad
+    const cantVars = proposiciones.length;
+    const totalFilas = Math.pow(2, cantVars);
+    const filas = [];
+    let verdaderos = 0;
+
+    const universoEl = document.getElementById('universe-input');
+    const elementosU = (universoEl ? universoEl.value : '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+    const setA = [], setB = [], setC = [], setSolucion = [];
+
+    for (let i = totalFilas - 1; i >= 0; i--) {
+        const idxCaso = totalFilas - 1 - i;
+        const nombreElemento = elementosU[idxCaso] || `Elemento ${idxCaso + 1}`;
+
+        const vP = Boolean((i >> (cantVars - 1)) & 1);
+        const vQ = cantVars >= 2 ? Boolean((i >> (cantVars - 2)) & 1) : false;
+        const vR = cantVars >= 3 ? Boolean((i >> (cantVars - 3)) & 1) : false;
+
+        if (vP) setA.push(nombreElemento);
+        if (cantVars >= 2 && vQ) setB.push(nombreElemento);
+        if (cantVars >= 3 && vR) setC.push(nombreElemento);
+
+        const resultado = evaluar(nodo, { p: vP, q: vQ, r: vR });
+        if (resultado) {
+            verdaderos++;
+            setSolucion.push(nombreElemento);
+        }
+        filas.push({ vP, vQ, vR, resultado, elemento: nombreElemento });
+    }
+
+    renderizarTabla(proposiciones, formulaSimbolica, filas, verdaderos, totalFilas);
+    renderizarResumenConjuntos(proposiciones, formulaConjuntos, setA, setB, setC, setSolucion);
+    dibujarVenn(nodo, cantVars);
+    typesetearMath();
+}
+
+function renderizarTabla(proposiciones, formula, filas, verdaderos, total) {
+    let tipo = 'CONTINGENCIA (El enunciado es verdadero en algunos escenarios y falso en otros)';
+    let clase = '';
+    if (verdaderos === total) {
+        tipo = 'TAUTOLOGÍA (El enunciado es siempre Verdadero; equivale al Universo U)';
+        clase = 'val-v';
+    } else if (verdaderos === 0) {
+        tipo = 'CONTRADICCIÓN (El enunciado es siempre Falso; equivale al Conjunto Vacío ∅)';
+        clase = 'val-f';
+    }
+
+    const potencias = ['⁰', '¹', '²', '³'];
+    document.getElementById('logic-classification').innerHTML = `
+        <div><strong>Clasificación:</strong> <span class="${clase}">${tipo}</span></div>
+        <div><strong>Casos favorables:</strong> ${verdaderos} de ${total} combinaciones posibles (2${potencias[proposiciones.length]}).</div>
+    `;
+
+    const headers = `<th>Escenario (U)</th>` +
+        proposiciones.map(p => `<th title="${escapeHtml(p.texto)}">${p.variable} (${p.conjunto})</th>`).join('') +
+        `<th class="result-col">${escapeHtml(formula)}</th>`;
+
+    const rowsHtml = filas.map(f => {
+        let co
