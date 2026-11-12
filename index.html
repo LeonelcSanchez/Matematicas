@@ -473,4 +473,152 @@ function renderizarTabla(proposiciones, formula, filas, verdaderos, total) {
         `<th class="result-col">${escapeHtml(formula)}</th>`;
 
     const rowsHtml = filas.map(f => {
-        let co
+        let cols = `<td><small>${escapeHtml(f.elemento)}</small></td>`;
+        cols += `<td class="${f.vP ? 'val-v' : 'val-f'}">${f.vP ? 'V' : 'F'}</td>`;
+        if (proposiciones.length >= 2) {
+            cols += `<td class="${f.vQ ? 'val-v' : 'val-f'}">${f.vQ ? 'V' : 'F'}</td>`;
+        }
+        if (proposiciones.length >= 3) {
+            cols += `<td class="${f.vR ? 'val-v' : 'val-f'}">${f.vR ? 'V' : 'F'}</td>`;
+        }
+        cols += `<td class="result-col ${f.resultado ? 'val-v' : 'val-f'}">${f.resultado ? 'V' : 'F'}</td>`;
+        return `<tr>${cols}</tr>`;
+    }).join('');
+
+    document.getElementById('truth-table').innerHTML =
+        `<thead><tr>${headers}</tr></thead><tbody>${rowsHtml}</tbody>`;
+}
+
+function renderizarResumenConjuntos(proposiciones, exprConjuntos, setA, setB, setC, setSolucion) {
+    document.getElementById('sets-explanation').innerHTML = `
+        <div><strong>Operación de Conjuntos:</strong> <code>S = ${escapeHtml(exprConjuntos)}</code></div>
+        <div>Cada proposición verdadera equivale a pertenecer al conjunto asociado (p ↔ x ∈ A).</div>
+    `;
+
+    const lista = arr => escapeHtml(arr.join(', ') || '∅');
+    let detalle = `<div><strong>Conjunto A (${proposiciones[0].variable}):</strong> { ${lista(setA)} }</div>`;
+    if (proposiciones.length >= 2) {
+        detalle += `<div><strong>Conjunto B (${proposiciones[1].variable}):</strong> { ${lista(setB)} }</div>`;
+    }
+    if (proposiciones.length >= 3) {
+        detalle += `<div><strong>Conjunto C (${proposiciones[2].variable}):</strong> { ${lista(setC)} }</div>`;
+    }
+    detalle += `<div style="margin-top:0.6rem; color:#38bdf8;"><strong>Conjunto Solución Final (S):</strong> { ${lista(setSolucion)} } (Cardinalidad |S| = ${setSolucion.length})</div>`;
+
+    document.getElementById('sets-elements-output').innerHTML = detalle;
+}
+
+function dibujarVenn(nodo, cantVars) {
+    const canvas = document.getElementById('vennCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Geometría escalada al tamaño real del canvas
+    const s = Math.min(W / 440, H / 330);
+    const cx = W / 2;
+    const cy = H / 2;
+    let r, cA, cB, cC;
+    if (cantVars === 3) {
+        r = 80 * s;
+        cA = { x: cx - 50 * s, y: cy - 35 * s };
+        cB = { x: cx + 50 * s, y: cy - 35 * s };
+        cC = { x: cx, y: cy + 50 * s };
+    } else if (cantVars === 2) {
+        r = 90 * s;
+        cA = { x: cx - 50 * s, y: cy };
+        cB = { x: cx + 50 * s, y: cy };
+    } else {
+        r = 90 * s;
+        cA = { x: cx, y: cy };
+    }
+
+    // Tabla de verdad precalculada (8 combinaciones) en vez de evaluar por cada píxel
+    const tabla = [];
+    for (let k = 0; k < 8; k++) {
+        tabla[k] = evaluar(nodo, { p: !!(k & 4), q: !!(k & 2), r: !!(k & 1) });
+    }
+
+    const imgData = ctx.createImageData(W, H);
+    const data = imgData.data;
+
+    for (let y = 10; y < H - 10; y++) {
+        for (let x = 10; x < W - 10; x++) {
+            const inA = Math.hypot(x - cA.x, y - cA.y) <= r;
+            const inB = cantVars >= 2 ? Math.hypot(x - cB.x, y - cB.y) <= r : false;
+            const inC = cantVars >= 3 ? Math.hypot(x - cC.x, y - cC.y) <= r : false;
+
+            const cumple = tabla[(inA ? 4 : 0) | (inB ? 2 : 0) | (inC ? 1 : 0)];
+            const idx = (y * W + x) * 4;
+
+            if (cumple) {
+                data[idx] = 56; data[idx + 1] = 189; data[idx + 2] = 248; data[idx + 3] = 120;
+            } else {
+                data[idx] = 15; data[idx + 1] = 23; data[idx + 2] = 42; data[idx + 3] = 255;
+            }
+        }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    // Marco Universo U
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, 10, W - 20, H - 20);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 14px Segoe UI, sans-serif';
+    ctx.fillText('Universo U', 22, 30);
+
+    const trazarCirculo = (c, texto, tx, ty) => {
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 14px Segoe UI, sans-serif';
+        ctx.fillText(texto, tx, ty);
+    };
+
+    trazarCirculo(cA, 'A (p)', cA.x - 45 * s, cA.y - r + 24 * s);
+    if (cantVars >= 2) trazarCirculo(cB, 'B (q)', cB.x + 15 * s, cB.y - r + 24 * s);
+    if (cantVars >= 3) trazarCirculo(cC, 'C (r)', cC.x - 18 * s, cC.y + r - 12 * s);
+}
+
+/* ------------------------------------------------------------------
+   3. EVENTOS DE LA INTERFAZ
+------------------------------------------------------------------- */
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+        const ids = ['natural-text', 'universe-input', 'btn-analyze', 'highlighted-text',
+            'connectors-list', 'propositions-dict', 'symbolic-formula', 'set-formula',
+            'truth-table', 'logic-classification', 'sets-explanation',
+            'sets-elements-output', 'vennCanvas'];
+        const faltan = ids.filter(id => !document.getElementById(id));
+        if (faltan.length) {
+            console.error('visual.js: faltan estos id en el HTML:', faltan.join(', '));
+            return;
+        }
+
+        document.getElementById('btn-analyze').addEventListener('click', procesarProblemaCompleto);
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('natural-text').value = btn.getAttribute('data-text');
+                procesarProblemaCompleto();
+            });
+        });
+
+        procesarProblemaCompleto();
+    });
+}
+
+if (typeof module !== 'undefined') {
+    module.exports = { analizarTextoNatural, evaluar, aLogica, aConjuntos };
+}
+
+console.log("Text2Logic cargado OK");
+</script>
+</body>
+</html>
